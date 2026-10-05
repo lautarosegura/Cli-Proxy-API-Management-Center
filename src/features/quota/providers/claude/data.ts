@@ -52,6 +52,15 @@ const findFableUsageLimit = (payload: ClaudeUsagePayload) => {
   return candidates.find((limit) => limit.is_active === true) ?? candidates[0] ?? null;
 };
 
+// Display order: the weekly limit is the one that matters most, then Fable,
+// then the rolling 5-hour window. Other windows keep their payload order after.
+const CLAUDE_WINDOW_DISPLAY_ORDER = ['seven-day', 'seven-day-fable', 'five-hour'];
+
+const claudeWindowRank = (id: string) => {
+  const rank = CLAUDE_WINDOW_DISPLAY_ORDER.indexOf(id);
+  return rank === -1 ? CLAUDE_WINDOW_DISPLAY_ORDER.length : rank;
+};
+
 export const buildClaudeQuotaWindows = (
   payload: ClaudeUsagePayload,
   t: TFunction
@@ -96,7 +105,7 @@ export const buildClaudeQuotaWindows = (
     }
   }
 
-  return windows;
+  return windows.sort((a, b) => claudeWindowRank(a.id) - claudeWindowRank(b.id));
 };
 
 const normalizeFlagValue = (value: unknown): boolean | undefined => {

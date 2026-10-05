@@ -182,8 +182,26 @@ describe('Claude Fable quota', () => {
     const windows = buildClaudeQuotaWindows(payload, t);
 
     expect(windows.map(({ id, usedPercent }) => ({ id, usedPercent }))).toEqual([
-      { id: 'five-hour', usedPercent: 10 },
       { id: 'seven-day', usedPercent: 20 },
+      { id: 'five-hour', usedPercent: 10 },
+    ]);
+  });
+
+  test('orders the weekly limit first, then Fable, then the 5-hour window', () => {
+    const payload = {
+      five_hour: { utilization: 10, resets_at: null },
+      seven_day: { utilization: 20, resets_at: legacyReset },
+      seven_day_opus: { utilization: 30, resets_at: legacyReset },
+      limits: [{ kind: 'weekly_scoped', percent: 40, scope: { model: { display_name: 'Fable' } } }],
+    } as unknown as ClaudeUsagePayload;
+
+    const windows = buildClaudeQuotaWindows(payload, t);
+
+    expect(windows.map(({ id }) => id)).toEqual([
+      'seven-day',
+      'seven-day-fable',
+      'five-hour',
+      'seven-day-opus',
     ]);
   });
 });
