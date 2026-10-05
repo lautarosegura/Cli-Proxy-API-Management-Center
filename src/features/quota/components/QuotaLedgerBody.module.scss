@@ -1,0 +1,203 @@
+@use '../../../styles/mixins' as *;
+
+/* ============================================================
+ * Ledger skin for the provider bodies (typed contract: features/quota/types.ts).
+ *
+ * Each quota row becomes a fixed-width lane: label + percent, the bar, then
+ * "in 1 day · 09/13, 13:00". The header wrappers dissolve (display: contents)
+ * so their children can be reordered into that reading order without touching
+ * the shared provider markup. Plan chips move under the credential name in
+ * the row itself, so they are hidden here; the Cards view still shows them.
+ * ============================================================ */
+
+.quotaRow {
+  flex: 0 0 var(--ledger-lane-width, 168px);
+  width: var(--ledger-lane-width, 168px);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  column-gap: 5px;
+  row-gap: 7px;
+  min-width: 0;
+}
+
+.quotaRowHeader,
+.quotaMeta {
+  display: contents;
+}
+
+.quotaModel {
+  order: 1;
+  flex: 1 1 0;
+  min-width: 0;
+  font-size: 13px;
+  color: var(--text-primary);
+  @include text-ellipsis;
+}
+
+.quotaPercent {
+  order: 2;
+  flex-shrink: 0;
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  color: var(--text-primary);
+}
+
+.quotaBar {
+  order: 3;
+  flex: 0 0 100%;
+  height: 4px;
+  border-radius: $radius-full;
+  background: var(--quota-track);
+  overflow: hidden;
+}
+
+.quotaBarFill {
+  height: 100%;
+  border-radius: $radius-full;
+  transition: width 360ms var(--ease-out-strong, ease);
+}
+
+.quotaBarFillHigh {
+  background: var(--viz-success);
+}
+
+.quotaBarFillMedium {
+  background: var(--quota-medium-color);
+}
+
+.quotaBarFillLow {
+  background: var(--viz-failure);
+}
+
+/* Relative first ("in 1 day"), absolute second ("· 09/13, 13:00"). */
+.quotaResetRelative {
+  order: 4;
+  flex-shrink: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.quotaResetRelativeSoon {
+  color: var(--quota-medium-color);
+}
+
+/* Rows without a pending reset still get a third line, so lanes stay level.
+   The text comes from the row (--ledger-no-reset) to stay localized. */
+.quotaRow:not(:has(.quotaReset))::after {
+  content: var(--ledger-no-reset, '');
+  order: 6;
+  flex: 0 0 100%;
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+
+.quotaReset {
+  order: 5;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--text-tertiary);
+  @include text-ellipsis;
+
+  &:has(+ .quotaResetRelative)::before {
+    content: '·';
+    margin-right: 5px;
+  }
+}
+
+.quotaAmount {
+  font-variant-numeric: tabular-nums;
+  color: var(--text-secondary);
+}
+
+.quotaMessage {
+  flex: 0 0 auto;
+  max-width: 100%;
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--text-tertiary);
+}
+
+/* Plan / credits chips live in the row identity column in this view. */
+.codexPlan,
+.codexPlanItem,
+.codexPlanLabel,
+.codexPlanValue,
+.premiumPlanValue,
+.elitePlanValue {
+  display: none;
+}
+
+/* Codex reset credits: one lane, listed compactly. */
+.codexResetCredits {
+  flex: 0 0 var(--ledger-lane-width, 168px);
+  width: var(--ledger-lane-width, 168px);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+}
+
+.codexResetCreditsTitle {
+  font-size: 13px;
+  color: var(--text-primary);
+  @include text-ellipsis;
+}
+
+.codexResetCreditRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 6px;
+  min-width: 0;
+  font-size: 12px;
+}
+
+.codexResetCreditRowSoon .codexResetCreditLabel {
+  color: var(--quota-medium-color);
+}
+
+.codexResetCreditLabel {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+
+.codexResetCreditTime {
+  display: flex;
+  gap: 5px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+
+  .quotaReset::before,
+  .quotaResetRelative::before {
+    content: none;
+  }
+}
+
+.codexResetCreditsError {
+  flex: 0 0 var(--ledger-lane-width, 168px);
+  font-size: 12px;
+  line-height: 1.4;
+  color: var(--warning-text);
+}
+
+/* Antigravity groups flatten into the lane flow; bucket labels carry the model. */
+.antigravityQuotaGroup {
+  display: contents;
+}
+
+.antigravityQuotaGroupHeader,
+.antigravityQuotaGroupTitle,
+.antigravityQuotaGroupDescription {
+  display: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quotaBarFill {
+    transition: none;
+  }
+}

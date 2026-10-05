@@ -84,6 +84,7 @@
   // 规则：翡翠绿只表达「活的流量」。
   --viz-success: #10b981;
   --viz-failure: #c65746;
+  --quota-track: color-mix(in srgb, var(--text-primary) 8%, transparent);
 
   // 动效词汇表：内置 ease 太弱，交互反馈统一用强减速曲线。
   // 按压 160ms / 悬停 200ms，UI 动效不超过 300ms。
@@ -162,28 +163,28 @@
   --accent-bg: var(--bg-tertiary);
 }
 
-// 深色主题（#191919）
+// Dark theme
 [data-theme='dark'] {
-  // 极简暖灰：深色模式（提升对比度与层级）
-  --bg-secondary: #151412; // 页面背景
-  --bg-primary: #1d1b18; // 容器/卡片背景
-  --bg-tertiary: #262320; // hover/次级背景
-  --bg-hover: #2e2a26;
-  --bg-quinary: #191714;
+  // Warm near-black console palette (sampled from the reference design)
+  --bg-secondary: #141412; // page background
+  --bg-primary: #1a1914; // sidebar / card surface
+  --bg-tertiary: #22211d; // hover / secondary surface
+  --bg-hover: #2e2e2c;
+  --bg-quinary: #171612;
   --bg-error-light: rgba(198, 87, 70, 0.18);
   --floating-surface: #2a2723;
   --floating-shadow: 0 14px 30px rgba(0, 0, 0, 0.4);
 
-  --text-primary: #f6f4f1;
-  --text-secondary: #c9c3bb;
-  --text-tertiary: #9c958d;
-  --text-quaternary: #6f6962;
+  --text-primary: #f0eeed;
+  --text-secondary: #aba5a0;
+  --text-tertiary: #8f8e8a;
+  --text-quaternary: #75746f;
   --text-muted: var(--text-tertiary);
 
-  --border-color: #3a3530;
+  --border-color: #292823;
   --border-secondary: var(--border-color);
-  --border-primary: #4a453f;
-  --border-hover: #5a544d;
+  --border-primary: #393935;
+  --border-hover: #45443f;
 
   --primary-color: #8b8680;
   --primary-hover: #9a948e;
@@ -191,7 +192,7 @@
   --primary-contrast: #ffffff;
 
   --success-color: #10b981;
-  --quota-medium-color: #ffd862;
+  --quota-medium-color: #f9d554;
   --warning-color: #c65746;
   --error-color: #c65746;
   --danger-color: var(--error-color);
@@ -234,10 +235,11 @@
 
   --glass-border: color-mix(in srgb, var(--border-color) 55%, transparent);
 
-  // 深色卡面上 #10b981 亮度超出 OKLCH 0.48–0.67 区间，且与失败色的色盲分离度不足，
-  // 因此深色单独降一档。三套主题均已通过对比度/色盲/亮度校验。
-  --viz-success: #0fae78;
-  --viz-failure: #cf4b3a;
+  // Quota/status colors on the dark surface: green = healthy, amber = medium
+  // (--quota-medium-color), red = critical. --quota-track is the empty meter track.
+  --viz-success: #1cb973;
+  --viz-failure: #bc3435;
+  --quota-track: #2d2c28;
 }
 
 @media (max-width: 768px),

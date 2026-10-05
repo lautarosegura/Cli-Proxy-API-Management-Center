@@ -8,12 +8,12 @@
  * - useHeaderRefresh 单槽位：本页唯一注册者，全局刷新 = 重取文件列表。
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { authFilesApi } from '@/services/api';
 import { Button } from '@/components/ui/Button';
 import { EmptyState } from '@/components/ui/EmptyState';
-import { IconSearch, IconX } from '@/components/ui/icons';
+import { IconRefreshCw, IconSearch, IconX } from '@/components/ui/icons';
 import { Select } from '@/components/ui/Select';
 import { Skeleton } from '@/components/ui/Skeleton';
 import { useHeaderRefresh } from '@/hooks/useHeaderRefresh';
@@ -23,16 +23,20 @@ import { useAuthStore, useQuotaStore, useThemeStore } from '@/stores';
 import type { AuthFileItem, ResolvedTheme } from '@/types';
 import { getQuotaCacheKey } from '@/utils/quota/identity';
 import { ProviderTabs } from '@/features/authFiles/components/ProviderTabs';
-import { QuotaHeader } from './components/QuotaHeader';
+import { getTypeLabel } from '@/features/authFiles/constants';
 import { QuotaCard } from './components/QuotaCard';
+import { QuotaLedgerRow } from './components/QuotaLedgerRow';
+import { QuotaSummaryStrip } from './components/QuotaSummaryStrip';
 import { QuotaTimeline } from './components/QuotaTimeline';
 import {
   CARD_ENTRANCE_BUDGET_MS,
   QUOTA_PAGE_SIZE,
   QUOTA_SORT_MODES,
   QUOTA_TAB_ORDER,
+  QUOTA_VIEW_MODES,
   type QuotaSortMode,
   type QuotaTabId,
+  type QuotaViewMode,
 } from './constants';
 import {
   buildTabCounts,
@@ -45,6 +49,7 @@ import {
   type QuotaFileEntry,
 } from './logic';
 import { nextRecoveryMs } from './resetSchedule';
+import { collectLedgerMeters, summarizeLedgerProvider } from './ledgerModel';
 import { QUOTA_ADAPTERS, getQuotaSetter, type QuotaCardState } from './providers';
 import type { QuotaProviderType } from './providers/types';
 import { useDevinQuotaAutoLoad } from './providers/devin/useDevinQuotaAutoLoad';
@@ -55,6 +60,7 @@ import styles from './QuotaPage.module.scss';
 
 const TAB_IDS: string[] = ['all', ...QUOTA_TAB_ORDER];
 const SKELETON_CARD_COUNT = 6;
+const SKELETON_ROW_COUNT = 5;
 
 /**
  * Existing providers display filenames; Devin's card and timeline share an
@@ -74,10 +80,13 @@ export function QuotaPage() {
   const [sortMode, setSortMode] = useState<QuotaSortMode>(
     () => readQuotaUiState()?.sortMode ?? 'default'
   );
+  const [viewMode, setViewMode] = useState<QuotaViewMode>(
+    () => readQuotaUiState()?.viewMode ?? 'ledger'
+  );
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState('');
   const searchInputRef = useRef<HTMLInputElement>(null);
-  // 页头 + tabs 的入场级联（标题 → meta → 动作 → tabs，级差 70ms）
+  // Entrance cascade for the tabs row.
   const revealRef = useRevealGroup<HTMLDivElement>();
 
   const disableControls = connectionStatus !== 'connected';
@@ -199,22 +208,35 @@ export function QuotaPage() {
     writeQuotaUiState({ sortMode: next as QuotaSortMode });
   }, []);
 
+  const handleViewModeChange = useCallback((next: string) => {
+    setViewMode(next as QuotaViewMode);
+    writeQuotaUiState({ viewMode: next as QuotaViewMode });
+  }, []);
+
+  const viewOptions = useMemo(
+    () =>
+      QUOTA_VIEW_MODES.map((mode) => ({ value: mode, label: t(`quota_management.view_${mode}`) })),
+    [t]
+  );
+
   const sortOptions = useMemo(
     () =>
       QUOTA_SORT_MODES.map((mode) => ({ value: mode, label: t(`quota_management.sort_${mode}`) })),
     [t]
   );
 
-  const { loadedCount, attentionCount } = useMemo(() => {
-    let loaded = 0;
-    let attention = 0;
-    entries.forEach((entry) => {
-      const status = quotaByType[entry.type][getQuotaCacheKey(entry.file)]?.status;
-      if (status === 'success') loaded += 1;
-      else if (status === 'error') attention += 1;
+  /* Summary strip: the selected tab's credentials, ignoring the search box so
+   * the totals don't jump while typing. */
+  const summaryNow = useNow();
+  const summaries = useMemo(() => {
+    const scoped = filterEntriesByTab(entries, tab);
+    return QUOTA_TAB_ORDER.flatMap((type) => {
+      const ofType = scoped.filter((entry) => entry.type === type);
+      if (ofType.length === 0) return [];
+      const meters = ofType.map((entry) => collectLedgerMeters(type, getQuota(entry), t));
+      return [summarizeLedgerProvider(type, meters, summaryNow)];
     });
-    return { loadedCount: loaded, attentionCount: attention };
-  }, [entries, quotaByType]);
+  }, [entries, tab, getQuota, t, summaryNow]);
 
   // 剪枝：文件列表落定后，各 provider 缓存只保留仍存在的凭证
   useEffect(() => {
@@ -314,15 +336,6 @@ export function QuotaPage() {
 
   return (
     <div className={styles.page} ref={revealRef}>
-      <QuotaHeader
-        totalCount={entries.length}
-        loadedCount={loadedCount}
-        attentionCount={attentionCount}
-        refreshing={loading || batchLoading}
-        disableControls={disableControls}
-        onRefreshAll={handleRefreshAll}
-      />
-
       <section className={styles.workbench}>
         {/* 提供商导航与搜索工具栏分层，避免不同控件争夺视觉焦点。 */}
         <div className={styles.tabsRow} data-reveal>
@@ -333,7 +346,35 @@ export function QuotaPage() {
             resolvedTheme={resolvedTheme}
             onChange={handleTabChange}
           />
+          <div className={styles.tabsActions}>
+            <div className={styles.viewSelect}>
+              <Select
+                value={viewMode}
+                options={viewOptions}
+                onChange={handleViewModeChange}
+                ariaLabel={t('quota_management.view_label')}
+                size="sm"
+              />
+            </div>
+            <button
+              type="button"
+              className={styles.refreshAll}
+              onClick={handleRefreshAll}
+              disabled={disableControls || loading || batchLoading}
+              title={t('quota_management.refresh_all_credentials')}
+              aria-label={t('quota_management.refresh_all_credentials')}
+            >
+              <IconRefreshCw
+                size={15}
+                className={loading || batchLoading ? styles.spinning : undefined}
+              />
+            </button>
+          </div>
         </div>
+
+        {!loading && (
+          <QuotaSummaryStrip summaries={summaries} resolvedTheme={resolvedTheme} now={summaryNow} />
+        )}
 
         <div className={styles.toolbar}>
           <div className={styles.search}>
@@ -380,11 +421,19 @@ export function QuotaPage() {
         )}
 
         {loading ? (
-          <div className={styles.grid} aria-hidden="true">
-            {Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
-              <Skeleton key={index} height={168} rounded={14} />
-            ))}
-          </div>
+          viewMode === 'ledger' ? (
+            <div className={styles.ledger} aria-hidden="true">
+              {Array.from({ length: SKELETON_ROW_COUNT }, (_, index) => (
+                <Skeleton key={index} height={52} rounded={10} />
+              ))}
+            </div>
+          ) : (
+            <div className={styles.grid} aria-hidden="true">
+              {Array.from({ length: SKELETON_CARD_COUNT }, (_, index) => (
+                <Skeleton key={index} height={168} rounded={14} />
+              ))}
+            </div>
+          )
         ) : isEmpty ? (
           <EmptyState
             title={
@@ -413,6 +462,33 @@ export function QuotaPage() {
               )
             }
           />
+        ) : viewMode === 'ledger' ? (
+          <div className={styles.ledger}>
+            {pageItems.map((entry, index) => {
+              // Provider headings only make sense while rows stay grouped by provider.
+              const startsGroup =
+                sortMode === 'default' && (index === 0 || pageItems[index - 1].type !== entry.type);
+              const key = `${entry.type}:${getQuotaCacheKey(entry.file)}`;
+              return (
+                <Fragment key={key}>
+                  {startsGroup && (
+                    <h2 className={styles.groupHead}>
+                      {getTypeLabel(t, entry.type)}
+                      <span className={styles.groupCount}>{tabCounts[entry.type] ?? 0}</span>
+                    </h2>
+                  )}
+                  <QuotaLedgerRow
+                    entry={entry}
+                    quota={getQuota(entry)}
+                    canRefresh={canUseActions && !entry.file.disabled}
+                    resetting={resettingQuotaName === getQuotaCacheKey(entry.file)}
+                    onRefresh={() => void refreshQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                    onReset={() => resetQuota(entry.file, QUOTA_ADAPTERS[entry.type])}
+                  />
+                </Fragment>
+              );
+            })}
+          </div>
         ) : (
           <div className={styles.grid}>
             {pageItems.map((entry, index) => (

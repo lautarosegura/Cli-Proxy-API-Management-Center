@@ -412,6 +412,23 @@ export function MainLayout() {
     return () => window.removeEventListener('resize', updateRailTooltipPosition);
   }, [railTooltip]);
 
+  // The top blur only exists to separate scrolled content from the floating
+  // header; at the top of the page it would just dim the first row.
+  const [contentScrolled, setContentScrolled] = useState(false);
+  useEffect(() => {
+    const el = contentRef.current;
+    const update = () => {
+      setContentScrolled((el?.scrollTop ?? 0) > 4 || window.scrollY > 4);
+    };
+    update();
+    el?.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('scroll', update, { passive: true });
+    return () => {
+      el?.removeEventListener('scroll', update);
+      window.removeEventListener('scroll', update);
+    };
+  }, []);
+
   // Keep the content center available to bottom overlays that align with the main area.
   useLayoutEffect(() => {
     const updateContentCenter = () => {
@@ -974,7 +991,7 @@ export function MainLayout() {
     <div
       className={`app-shell ${sidebarCollapsed ? 'sidebar-is-collapsed' : ''} ${
         isPluginResourcePage ? 'plugin-resource-shell' : ''
-      }`}
+      } ${contentScrolled ? 'content-scrolled' : ''}`}
     >
       <div className="top-gradient-blur" aria-hidden="true" />
 

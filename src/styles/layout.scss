@@ -76,7 +76,14 @@
     rgb(0 0 0 / 0.22) 72%,
     transparent 100%
   );
-  transition: left $transition-normal;
+  opacity: 0;
+  transition:
+    left $transition-normal,
+    opacity $transition-fast;
+
+  .content-scrolled & {
+    opacity: 1;
+  }
 }
 
 .main-header {
