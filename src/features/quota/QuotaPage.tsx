@@ -55,6 +55,7 @@ import type { QuotaProviderType } from './providers/types';
 import { useDevinQuotaAutoLoad } from './providers/devin/useDevinQuotaAutoLoad';
 import { useQuotaActions } from './hooks/useQuotaActions';
 import { useQuotaBatchLoader } from './hooks/useQuotaBatchLoader';
+import { TokenUsage } from './usage/TokenUsage';
 import { readQuotaUiState, writeQuotaUiState } from './uiState';
 import styles from './QuotaPage.module.scss';
 
@@ -123,7 +124,13 @@ export function QuotaPage() {
     }
   }, [connectionStatus, sessionGeneration, t]);
 
-  useHeaderRefresh(loadFiles);
+  // The header refresh slot is single-owner: refetch both the file list and token usage.
+  const [usageReload, setUsageReload] = useState(0);
+  const handleHeaderRefresh = useCallback(() => {
+    setUsageReload((value) => value + 1);
+    return loadFiles();
+  }, [loadFiles]);
+  useHeaderRefresh(handleHeaderRefresh);
 
   useEffect(() => {
     void loadFiles();
@@ -336,6 +343,7 @@ export function QuotaPage() {
 
   return (
     <div className={styles.page} ref={revealRef}>
+      <TokenUsage reloadToken={usageReload} />
       <section className={styles.workbench}>
         {/* 提供商导航与搜索工具栏分层，避免不同控件争夺视觉焦点。 */}
         <div className={styles.tabsRow} data-reveal>
