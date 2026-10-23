@@ -2,9 +2,13 @@ import {
   QUOTA_SORT_MODES,
   QUOTA_TAB_ORDER,
   QUOTA_VIEW_MODES,
+  USAGE_METRICS,
+  USAGE_RANGES,
   type QuotaSortMode,
   type QuotaTabId,
   type QuotaViewMode,
+  type UsageMetric,
+  type UsageRange,
 } from './constants';
 
 /** 额度页 UI 偏好：会话级持久化（sessionStorage），跨会话不携带。 */
@@ -12,6 +16,8 @@ export type QuotaUiState = {
   tab?: QuotaTabId;
   sortMode?: QuotaSortMode;
   viewMode?: QuotaViewMode;
+  usageMetric?: UsageMetric;
+  usageRange?: UsageRange;
 };
 
 const QUOTA_UI_STATE_KEY = 'quotaPage.uiState';
@@ -29,6 +35,15 @@ export const isQuotaSortMode = (value: unknown): value is QuotaSortMode =>
 export const isQuotaViewMode = (value: unknown): value is QuotaViewMode =>
   typeof value === 'string' && QUOTA_VIEW_MODE_SET.has(value);
 
+const USAGE_METRIC_SET = new Set<string>(USAGE_METRICS);
+const USAGE_RANGE_SET = new Set<number>(USAGE_RANGES);
+
+const isUsageMetric = (value: unknown): value is UsageMetric =>
+  typeof value === 'string' && USAGE_METRIC_SET.has(value);
+
+const isUsageRange = (value: unknown): value is UsageRange =>
+  typeof value === 'number' && USAGE_RANGE_SET.has(value);
+
 export const readQuotaUiState = (): QuotaUiState | null => {
   if (typeof window === 'undefined') return null;
   try {
@@ -40,6 +55,8 @@ export const readQuotaUiState = (): QuotaUiState | null => {
       tab: isQuotaTabId(parsed.tab) ? parsed.tab : undefined,
       sortMode: isQuotaSortMode(parsed.sortMode) ? parsed.sortMode : undefined,
       viewMode: isQuotaViewMode(parsed.viewMode) ? parsed.viewMode : undefined,
+      usageMetric: isUsageMetric(parsed.usageMetric) ? parsed.usageMetric : undefined,
+      usageRange: isUsageRange(parsed.usageRange) ? parsed.usageRange : undefined,
     };
   } catch {
     return null;

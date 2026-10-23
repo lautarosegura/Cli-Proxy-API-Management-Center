@@ -28,3 +28,12 @@ export type QuotaViewMode = (typeof QUOTA_VIEW_MODES)[number];
 
 /** 与 useRevealGroup 的 GROUP_MAX_TOTAL 一致：卡片级联总预算 360ms。 */
 export const CARD_ENTRANCE_BUDGET_MS = 360;
+
+/** Token usage section: chart metric and day range (backend accepts 1..400). */
+export const USAGE_METRICS = ['cost', 'tokens'] as const;
+
+export type UsageMetric = (typeof USAGE_METRICS)[number];
+
+export const USAGE_RANGES = [7, 30, 90] as const;
+
+export type UsageRange = (typeof USAGE_RANGES)[number];
