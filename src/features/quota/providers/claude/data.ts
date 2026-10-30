@@ -153,7 +153,11 @@ export const resolveClaudePlanType = (profile: ClaudeProfileResponse | null): st
 
   // Account flags include personal subscriptions even for a Team-scoped token.
   const hasClaudeMax = normalizeFlagValue(profile.account?.has_claude_max);
-  if (hasClaudeMax) return 'plan_max';
+  if (hasClaudeMax) {
+    // Anthropic renamed Max 20x to Ultra but kept the `default_claude_max_20x` tier id.
+    const rateLimitTier = normalizeStringValue(profile.organization?.rate_limit_tier);
+    return rateLimitTier?.toLowerCase().endsWith('max_20x') ? 'plan_ultra' : 'plan_max';
+  }
 
   const hasClaudePro = normalizeFlagValue(profile.account?.has_claude_pro);
   if (hasClaudePro) return 'plan_pro';

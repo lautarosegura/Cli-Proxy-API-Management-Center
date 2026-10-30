@@ -48,6 +48,19 @@ describe('Claude plan type', () => {
     }
   );
 
+  test.each([
+    ['default_claude_max_20x', 'plan_ultra'],
+    ['default_claude_max_5x', 'plan_max'],
+    [undefined, 'plan_max'],
+  ] as const)('labels Max tier %s as %s', (rateLimitTier, expected) => {
+    expect(
+      resolveClaudePlanType({
+        account: { has_claude_max: true },
+        organization: { organization_type: 'claude_max', rate_limit_tier: rateLimitTier },
+      })
+    ).toBe(expected);
+  });
+
   test('preserves case-insensitive organization matching', () => {
     expect(
       resolveClaudePlanType({
